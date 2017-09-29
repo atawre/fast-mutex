@@ -1,0 +1,25 @@
+<head>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    div {
+    }
+
+    details {
+      margin-bottom: 10px;
+      padding: 5px;
+      border: 1px gray solid;
+    }
+  </style>
+</head>
+<body>
+  <p>Current time: <span class="time"></span></p>
+  <a href="#" target="_blank">Open another tab</a>
+  <script src="./tmp/browser-test.js"></script>
+  <script>
+    setInterval(function () {
+      document.querySelector(".time").innerText = (new Date().toTimeString()).split(" ")[0];
+    }, 500);
+  </script>
+</body>
