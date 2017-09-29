@@ -57,45 +57,51 @@ class FastMutex {
 
         this.setItem(x, this.clientId);
 
-        // if y exists, another client is getting a lock, so retry in a bit
-        let lsY = this.getItem(y);
-        if (lsY) {
-          debug('Lock exists on Y (%s), restarting...', lsY);
-          this.lockStats.restartCount++;
-          setTimeout(() => acquireLock(key));
-          return;
-        }
+        setTimeout(() => {
+          // if y exists, another client is getting a lock, so retry in a bit
+          let lsY = this.getItem(y);
+          if (lsY) {
+            debug('Lock exists on Y (%s), restarting...', lsY);
+            this.lockStats.restartCount++;
+            setTimeout(() => acquireLock(key));
+            return;
+          }
 
-        // ask for inner lock
-        this.setItem(y, this.clientId);
-
-        // if x was changed, another client is contending for an inner lock
-        let lsX = this.getItem(x);
-        if (lsX !== this.clientId) {
-          this.lockStats.contentionCount++;
-          debug('Lock contention detected. X="%s"', lsX);
-
-          // Give enough time for critical section:
           setTimeout(() => {
-            lsY = this.getItem(y);
-            if (lsY === this.clientId) {
-              // we have a lock
-              debug('FastMutex client "%s" won the lock contention on "%s"', this.clientId, key);
-              resolveWithStats(resolve, this.lockStats);
-            } else {
-              // we lost the lock, restart the process again
-              this.lockStats.restartCount++;
-              this.lockStats.locksLost++;
-              debug('FastMutex client "%s" lost the lock contention on "%s" to another process (%s). Restarting...', this.clientId, key, lsY);
-              setTimeout(() => acquireLock(key));
-            }
-          }, 50);
-          return;
-        }
+            // ask for inner lock
+            this.setItem(y, this.clientId);
 
-        // no contention:
-        debug('FastMutex client "%s" acquired a lock on "%s" with no contention', this.clientId, key);
-        resolveWithStats(resolve, this.lockStats);
+            setTimeout(() => {
+              // if x was changed, another client is contending for an inner lock
+              let lsX = this.getItem(x);
+              if (lsX !== this.clientId) {
+                this.lockStats.contentionCount++;
+                debug('Lock contention detected. X="%s"', lsX);
+
+                // Give enough time for critical section:
+                setTimeout(() => {
+                  lsY = this.getItem(y);
+                  if (lsY === this.clientId) {
+                    // we have a lock
+                    debug('FastMutex client "%s" won the lock contention on "%s"', this.clientId, key);
+                    resolveWithStats(resolve, this.lockStats);
+                  } else {
+                    // we lost the lock, restart the process again
+                    this.lockStats.restartCount++;
+                    this.lockStats.locksLost++;
+                    debug('FastMutex client "%s" lost the lock contention on "%s" to another process (%s). Restarting...', this.clientId, key, lsY);
+                    setTimeout(() => acquireLock(key));
+                  }
+                }, 50);
+                return;
+              }
+
+              // no contention:
+              debug('FastMutex client "%s" acquired a lock on "%s" with no contention', this.clientId, key);
+              resolveWithStats(resolve, this.lockStats);
+            });
+          });
+        });
       };
 
       acquireLock(key);
